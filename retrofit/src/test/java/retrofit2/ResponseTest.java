@@ -15,28 +15,27 @@
  */
 package retrofit2;
 
-import com.squareup.okhttp.Protocol;
-import com.squareup.okhttp.ResponseBody;
+import okhttp3.Headers;
+import okhttp3.Protocol;
+import okhttp3.ResponseBody;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 public final class ResponseTest {
-  private final com.squareup.okhttp.Response successResponse =
-      new com.squareup.okhttp.Response.Builder() //
-          .code(200)
-          .message("OK")
-          .protocol(Protocol.HTTP_1_1)
-          .request(new com.squareup.okhttp.Request.Builder().url("http://localhost").build())
-          .build();
-  private final com.squareup.okhttp.Response errorResponse =
-      new com.squareup.okhttp.Response.Builder() //
-          .code(400)
-          .message("Broken!")
-          .protocol(Protocol.HTTP_1_1)
-          .request(new com.squareup.okhttp.Request.Builder().url("http://localhost").build())
-          .build();
+  private final okhttp3.Response successResponse = new okhttp3.Response.Builder() //
+      .code(200)
+      .message("OK")
+      .protocol(Protocol.HTTP_1_1)
+      .request(new okhttp3.Request.Builder().url("http://localhost").build())
+      .build();
+  private final okhttp3.Response errorResponse = new okhttp3.Response.Builder() //
+      .code(400)
+      .message("Broken!")
+      .protocol(Protocol.HTTP_1_1)
+      .request(new okhttp3.Request.Builder().url("http://localhost").build())
+      .build();
 
   @Test public void success() {
     Object body = new Object();
@@ -45,15 +44,37 @@ public final class ResponseTest {
     assertThat(response.code()).isEqualTo(200);
     assertThat(response.message()).isEqualTo("OK");
     assertThat(response.headers().size()).isZero();
-    assertThat(response.isSuccess()).isTrue();
+    assertThat(response.isSuccessful()).isTrue();
     assertThat(response.body()).isSameAs(body);
     assertThat(response.errorBody()).isNull();
   }
 
   @Test public void successNullAllowed() {
     Response<Object> response = Response.success(null);
-    assertThat(response.isSuccess()).isTrue();
+    assertThat(response.isSuccessful()).isTrue();
     assertThat(response.body()).isNull();
+  }
+
+  @Test public void successWithHeaders() {
+    Object body = new Object();
+    Headers headers = Headers.of("foo", "bar");
+    Response<Object> response = Response.success(body, headers);
+    assertThat(response.raw()).isNotNull();
+    assertThat(response.code()).isEqualTo(200);
+    assertThat(response.message()).isEqualTo("OK");
+    assertThat(response.headers().toMultimap()).isEqualTo(headers.toMultimap());
+    assertThat(response.isSuccessful()).isTrue();
+    assertThat(response.body()).isSameAs(body);
+    assertThat(response.errorBody()).isNull();
+  }
+
+  @Test public void successWithNullHeadersThrows() {
+    try {
+      Response.success("", (okhttp3.Headers) null);
+      fail();
+    } catch (NullPointerException e) {
+      assertThat(e).hasMessage("headers == null");
+    }
   }
 
   @Test public void successWithRawResponse() {
@@ -63,14 +84,14 @@ public final class ResponseTest {
     assertThat(response.code()).isEqualTo(200);
     assertThat(response.message()).isEqualTo("OK");
     assertThat(response.headers().size()).isZero();
-    assertThat(response.isSuccess()).isTrue();
+    assertThat(response.isSuccessful()).isTrue();
     assertThat(response.body()).isSameAs(body);
     assertThat(response.errorBody()).isNull();
   }
 
   @Test public void successWithNullRawResponseThrows() {
     try {
-      Response.success("", null);
+      Response.success("", (okhttp3.Response) null);
       fail();
     } catch (NullPointerException e) {
       assertThat(e).hasMessage("rawResponse == null");
@@ -91,9 +112,9 @@ public final class ResponseTest {
     Response<?> response = Response.error(400, errorBody);
     assertThat(response.raw()).isNotNull();
     assertThat(response.code()).isEqualTo(400);
-    assertThat(response.message()).isNull();
+    assertThat(response.message()).isEqualTo("Response.error()");
     assertThat(response.headers().size()).isZero();
-    assertThat(response.isSuccess()).isFalse();
+    assertThat(response.isSuccessful()).isFalse();
     assertThat(response.body()).isNull();
     assertThat(response.errorBody()).isSameAs(errorBody);
   }
@@ -124,7 +145,7 @@ public final class ResponseTest {
     assertThat(response.code()).isEqualTo(400);
     assertThat(response.message()).isEqualTo("Broken!");
     assertThat(response.headers().size()).isZero();
-    assertThat(response.isSuccess()).isFalse();
+    assertThat(response.isSuccessful()).isFalse();
     assertThat(response.body()).isNull();
     assertThat(response.errorBody()).isSameAs(errorBody);
   }

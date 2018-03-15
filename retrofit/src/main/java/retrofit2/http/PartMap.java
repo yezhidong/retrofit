@@ -28,19 +28,21 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * <p>
  * Values of the map on which this annotation exists will be processed in one of two ways:
  * <ul>
- * <li>If the type is {@link com.squareup.okhttp.RequestBody RequestBody} the value will be used
+ * <li>If the type is {@link okhttp3.RequestBody RequestBody} the value will be used
  * directly with its content type.</li>
  * <li>Other object types will be converted to an appropriate representation by using
  * {@linkplain Converter a converter}.</li>
  * </ul>
  * <p>
- * <pre>{@code
+ * <pre><code>
  * &#64;Multipart
  * &#64;POST("/upload")
- * Call&lt;ResponseBody> upload(
+ * Call&lt;ResponseBody&gt; upload(
  *     &#64;Part("file") RequestBody file,
  *     &#64;PartMap Map&lt;String, RequestBody&gt; params);
- * }</pre>
+ * </code></pre>
+ * <p>
+ * A {@code null} value for the map, as a key, or as a value is not allowed.
  *
  * @see Multipart
  * @see Part

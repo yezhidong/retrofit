@@ -15,29 +15,29 @@
  */
 package retrofit2.http;
 
-import com.squareup.okhttp.HttpUrl;
 import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
+import okhttp3.HttpUrl;
 
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
  * Use a custom HTTP verb for a request.
- * <pre>{@code
+ * <pre><code>
  * interface Service {
  *   &#064;HTTP(method = "CUSTOM", path = "custom/endpoint/")
- *   Call<ResponseBody> customEndpoint();
+ *   Call&lt;ResponseBody&gt; customEndpoint();
  * }
- * }</pre>
+ * </code></pre>
  * This annotation can also used for sending {@code DELETE} with a request body:
- * <pre>{@code
+ * <pre><code>
  * interface Service {
  *   &#064;HTTP(method = "DELETE", path = "remove/", hasBody = true)
- *   Call<ResponseBody> deleteObject(@Body RequestBody object);
+ *   Call&lt;ResponseBody&gt; deleteObject(@Body RequestBody object);
  * }
- * }</pre>
+ * </code></pre>
  */
 @Documented
 @Target(METHOD)

@@ -18,9 +18,11 @@ package retrofit2;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.concurrent.Executor;
+import javax.annotation.Nullable;
 import org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement;
 
 class Platform {
@@ -46,19 +48,23 @@ class Platform {
     return new Platform();
   }
 
-  CallAdapter.Factory defaultCallAdapterFactory(Executor callbackExecutor) {
+  @Nullable Executor defaultCallbackExecutor() {
+    return null;
+  }
+
+  CallAdapter.Factory defaultCallAdapterFactory(@Nullable Executor callbackExecutor) {
     if (callbackExecutor != null) {
       return new ExecutorCallAdapterFactory(callbackExecutor);
     }
-    return DefaultCallAdapter.FACTORY;
+    return DefaultCallAdapterFactory.INSTANCE;
   }
 
   boolean isDefaultMethod(Method method) {
     return false;
   }
 
-  Object invokeDefaultMethod(Method method, Class<?> declaringClass, Object object, Object... args)
-      throws Throwable {
+  @Nullable Object invokeDefaultMethod(Method method, Class<?> declaringClass, Object object,
+      @Nullable Object... args) throws Throwable {
     throw new UnsupportedOperationException();
   }
 
@@ -69,9 +75,12 @@ class Platform {
     }
 
     @Override Object invokeDefaultMethod(Method method, Class<?> declaringClass, Object object,
-        Object... args) throws Throwable {
-      return MethodHandles.lookup()
-          .in(declaringClass)
+        @Nullable Object... args) throws Throwable {
+      // Because the service interface might not be public, we need to use a MethodHandle lookup
+      // that ignores the visibility of the declaringClass.
+      Constructor<Lookup> constructor = Lookup.class.getDeclaredConstructor(Class.class, int.class);
+      constructor.setAccessible(true);
+      return constructor.newInstance(declaringClass, -1 /* trusted */)
           .unreflectSpecial(method, declaringClass)
           .bindTo(object)
           .invokeWithArguments(args);
@@ -79,10 +88,12 @@ class Platform {
   }
 
   static class Android extends Platform {
-    @Override CallAdapter.Factory defaultCallAdapterFactory(Executor callbackExecutor) {
-      if (callbackExecutor == null) {
-        callbackExecutor = new MainThreadExecutor();
-      }
+    @Override public Executor defaultCallbackExecutor() {
+      return new MainThreadExecutor();
+    }
+
+    @Override CallAdapter.Factory defaultCallAdapterFactory(@Nullable Executor callbackExecutor) {
+      if (callbackExecutor == null) throw new AssertionError();
       return new ExecutorCallAdapterFactory(callbackExecutor);
     }
 

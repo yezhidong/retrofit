@@ -15,10 +15,10 @@
  */
 package retrofit2.http;
 
-import com.squareup.okhttp.HttpUrl;
 import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
+import okhttp3.HttpUrl;
 import retrofit2.Retrofit;
 
 import static java.lang.annotation.ElementType.PARAMETER;
@@ -26,10 +26,10 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
  * URL resolved against the {@linkplain Retrofit#baseUrl() base URL}.
- * <pre>{@code
+ * <pre><code>
  * &#64;GET
- * Call&lt;ResponseBody> list(@Url String url);
- * }</pre>
+ * Call&lt;ResponseBody&gt; list(@Url String url);
+ * </code></pre>
  * <p>
  * See {@linkplain retrofit2.Retrofit.Builder#baseUrl(HttpUrl) base URL} for details of how
  * the value will be resolved against a base URL to create the full endpoint URL.

@@ -15,8 +15,8 @@
  */
 package retrofit2;
 
-import com.squareup.okhttp.ResponseBody;
 import java.io.IOException;
+import okhttp3.Request;
 
 /**
  * An invocation of a Retrofit method that sends a request to a webserver and returns a response.
@@ -68,12 +68,6 @@ public interface Call<T> extends Cloneable {
    */
   Call<T> clone();
 
-  /** Creates {@link Call} instances. */
-  interface Factory {
-    /**
-     * Returns a {@link Call} which will send {@code request} when executed or enqueue and use
-     * {@code converter} to parse the response. May not return null.
-     */
-    <T> Call<T> create(DeferredRequest request, Converter<ResponseBody, T> converter);
-  }
+  /** The original HTTP request. */
+  Request request();
 }

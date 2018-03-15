@@ -20,6 +20,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.annotation.concurrent.GuardedBy;
+import okhttp3.Request;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -33,7 +35,8 @@ final class BehaviorCall<T> implements Call<T> {
 
   private volatile Future<?> task;
   volatile boolean canceled;
-  private volatile boolean executed;
+  @GuardedBy("this")
+  private boolean executed;
 
   BehaviorCall(NetworkBehavior behavior, ExecutorService backgroundExecutor, Call<T> delegate) {
     this.behavior = behavior;
@@ -46,7 +49,14 @@ final class BehaviorCall<T> implements Call<T> {
     return new BehaviorCall<>(behavior, backgroundExecutor, delegate.clone());
   }
 
+  @Override public Request request() {
+    return delegate.request();
+  }
+
+  @SuppressWarnings("ConstantConditions") // Guarding public API nullability.
   @Override public void enqueue(final Callback<T> callback) {
+    if (callback == null) throw new NullPointerException("callback == null");
+
     synchronized (this) {
       if (executed) throw new IllegalStateException("Already executed");
       executed = true;
@@ -58,7 +68,7 @@ final class BehaviorCall<T> implements Call<T> {
           try {
             Thread.sleep(sleepMs);
           } catch (InterruptedException e) {
-            callback.onFailure(new IOException("canceled"));
+            callback.onFailure(BehaviorCall.this, new IOException("canceled"));
             return false;
           }
         }
@@ -67,22 +77,27 @@ final class BehaviorCall<T> implements Call<T> {
 
       @Override public void run() {
         if (canceled) {
-          callback.onFailure(new IOException("canceled"));
+          callback.onFailure(BehaviorCall.this, new IOException("canceled"));
         } else if (behavior.calculateIsFailure()) {
           if (delaySleep()) {
-            callback.onFailure(behavior.failureException());
+            callback.onFailure(BehaviorCall.this, behavior.failureException());
+          }
+        } else if (behavior.calculateIsError()) {
+          if (delaySleep()) {
+            //noinspection unchecked An error response has no body.
+            callback.onResponse(BehaviorCall.this, (Response<T>) behavior.createErrorResponse());
           }
         } else {
           delegate.enqueue(new Callback<T>() {
-            @Override public void onResponse(final Response<T> response) {
+            @Override public void onResponse(Call<T> call, Response<T> response) {
               if (delaySleep()) {
-                callback.onResponse(response);
+                callback.onResponse(call, response);
               }
             }
 
-            @Override public void onFailure(final Throwable t) {
+            @Override public void onFailure(Call<T> call, Throwable t) {
               if (delaySleep()) {
-                callback.onFailure(t);
+                callback.onFailure(call, t);
               }
             }
           });
@@ -100,12 +115,12 @@ final class BehaviorCall<T> implements Call<T> {
     final AtomicReference<Throwable> failureRef = new AtomicReference<>();
     final CountDownLatch latch = new CountDownLatch(1);
     enqueue(new Callback<T>() {
-      @Override public void onResponse(Response<T> response) {
+      @Override public void onResponse(Call<T> call, Response<T> response) {
         responseRef.set(response);
         latch.countDown();
       }
 
-      @Override public void onFailure(Throwable t) {
+      @Override public void onFailure(Call<T> call, Throwable t) {
         failureRef.set(t);
         latch.countDown();
       }
